@@ -2,7 +2,16 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include <time.h>
 
+struct Enemy {
+    int x;
+    int y;
+    char* representation;
+};
+
+struct Enemy enemies[5]; // Array de enemigos
 
 struct Shot{
     int x;
@@ -14,12 +23,22 @@ bool isPlaying;
 struct Shot* firstShot;
 struct Shot* lastShot;
 
+void initEnemies() {
+    enemies[0].representation = "(*_*)";
+    enemies[1].representation = "ƪ(@)ƪ";
+    enemies[2].representation = "[-_-]";
+    enemies[3].representation = "[¬º-°]¬";
+    enemies[4].representation = "(°+°)";
+}
 void printShip(){
     mvprintw(y-1, x - 1, "   ^   ");
     mvprintw(y , x - 2, "  *****  ");
     mvprintw(y + 1, x - 2, "*********");
     mvprintw(y + 2, x - 3, " []     [] ");
 }
+
+
+
 void reduceAllShot(int cant){
     struct Shot* shot = firstShot;
     while (shot != NULL){
@@ -48,6 +67,7 @@ void printShots(){
         shot = shot->next;
     }
 }
+
 void* refreshScreen(){
     while (isPlaying){
         clear();
@@ -77,6 +97,7 @@ void init(){
     firstShot->y = y-2;
     firstShot->next = NULL;
     lastShot = firstShot;
+    initEnemies();
 }
 
 void* moveShip(){
@@ -85,16 +106,16 @@ void* moveShip(){
 
         switch(ch) {
             case KEY_UP:
-                y = y > 0 ? y - 1 : y;
+                y = (y > 0)? y - 1 : y;
                 break;
             case KEY_DOWN:
                 y = y < maxY - 3 ? y + 1 : y;
                 break;
             case KEY_LEFT:
-                x = x > 2 ? x - 2 : x; // Aumentar velocidad horizontal
+                x = x > 4 ? x - 2 : x; // Aumentar velocidad horizontal
                 break;
             case KEY_RIGHT:
-                x = x < maxX - 3 ? x + 2 : x; // Aumentar velocidad horizontal
+                x = x < maxX - 10 ? x + 2 : x; // Aumentar velocidad horizontal
                 break;
         }
     }
@@ -106,6 +127,8 @@ int main() {
 
     //Inicializar ncurses y variables
     init();
+
+
 
     //refrescar
     pthread_t refreshScreen_thread_id;
@@ -120,6 +143,8 @@ int main() {
     //Dibujar nave
     pthread_t printShip_thread_id;
     pthread_create(&printShip_thread_id, NULL, moveShip, NULL);
+
+
 
     // Finalizar ncurses
     pthread_join(printShip_thread_id, NULL);
