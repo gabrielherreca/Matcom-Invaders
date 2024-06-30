@@ -15,9 +15,10 @@ struct Shot* firstShot;
 struct Shot* lastShot;
 
 void printShip(){
-    mvprintw(y, x - 2, "/-\\");
-    mvprintw(y + 1, x - 3, "<A>");
-    mvprintw(y + 2, x - 2, "\\-/");
+    mvprintw(y-1, x - 1, "   ^   ");
+    mvprintw(y , x - 2, "  *****  ");
+    mvprintw(y + 1, x - 2, "*********");
+    mvprintw(y + 2, x - 3, " []     [] ");
 }
 void reduceAllShot(int cant){
     struct Shot* shot = firstShot;
@@ -27,13 +28,12 @@ void reduceAllShot(int cant){
     }
 }
 void* shoot(){
-
     while (true){
-        sleep(1);
+        usleep(300000); // 0.8 seconds
         reduceAllShot(2);
         if (lastShot->y == 0) break;
         struct Shot *shot = malloc(sizeof(struct Shot));
-        shot->x = x;
+        shot->x = x+2;
         shot->y = y-2;
         shot->next = NULL;
         lastShot->next = shot;
