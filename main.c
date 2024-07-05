@@ -24,12 +24,26 @@ struct Shot* firstShot;
 struct Shot* lastShot;
 
 void initEnemies() {
+    srand(time(NULL)); // Inicializar la semilla del generador de números aleatorios
+    for (int i = 0; i < 5; i++) {
+        enemies[i].y = 0; // Posición y en el borde superior de la pantalla
+        enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
+    }
     enemies[0].representation = "(*_*)";
     enemies[1].representation = "ƪ(@)ƪ";
     enemies[2].representation = "[-_-]";
     enemies[3].representation = "[¬º-°]¬";
     enemies[4].representation = "(°+°)";
 }
+
+void printEnemies() {
+    for (int i = 0; i < 5; i++) {
+        if (enemies[i].x >= 0 && enemies[i].y >= 0) { // Solo imprime los enemigos que están dentro de la pantalla
+            mvprintw(enemies[i].y, enemies[i].x, "%s", enemies[i].representation);
+        }
+    }
+}
+
 void printShip(){
     mvprintw(y-1, x - 1, "   ^   ");
     mvprintw(y , x - 2, "  *****  ");
@@ -68,12 +82,30 @@ void printShots(){
     }
 }
 
+
+void checkCollisions() {
+    struct Shot* shot = firstShot;
+    while (shot != NULL) {
+        for (int i = 0; i < 5; i++) {
+            if (abs(enemies[i].x - shot->x) <= 3 && abs(enemies[i].y - shot->y) <= 1) {
+                // El enemigo ha sido golpeado, lo hacemos reaparecer en la parte superior de la pantalla
+                enemies[i].y = 0; // Posición y en el borde superior de la pantalla
+                enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
+            }
+        }
+        shot = shot->next;
+    }
+}
+
 void* refreshScreen(){
     while (isPlaying){
         clear();
         printShots();
         printShip();
+        printEnemies();
+        checkCollisions();
         refresh();
+
         usleep(50000); //500000 = 0.5s
     }
 }
@@ -98,6 +130,7 @@ void init(){
     firstShot->next = NULL;
     lastShot = firstShot;
     initEnemies();
+
 }
 
 void* moveShip(){
@@ -130,11 +163,15 @@ int main() {
 
 
 
+
+
     //refrescar
     pthread_t refreshScreen_thread_id;
     pthread_create(&refreshScreen_thread_id, NULL, refreshScreen, NULL);
 
-    printShip();
+
+
+
 
     //Comenzar a disparar
     pthread_t shoot_thread_id;
