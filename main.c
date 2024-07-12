@@ -29,6 +29,9 @@ bool isPlaying;
 struct Shot *firstShot;
 struct Shot *lastShot;
 
+int countdown = 10;
+int maxCountdown = 0;
+
 void initEnemies() {
     srand(time(NULL)); // Inicializar la semilla del generador de números aleatorios
     for (int i = 0; i < 5; i++) {
@@ -44,6 +47,30 @@ void initEnemies() {
         enemies[i].size = strlen(enemies[i].representation);
     }
 }
+
+void gameOverScreen() {
+    clear(); // Limpiar la pantalla
+    mvprintw(LINES / 2, COLS / 2 - 4, "GAME OVER"); // Imprimir "GAME OVER" en el centro de la pantalla
+    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Max Points: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+    refresh(); // Actualizar la pantalla
+    isPlaying = false; // Cambiar el estado del juego a falso
+    getch(); // Esperar a que se presione una tecla
+    endwin(); // Finalizar ncurses
+    exit(0); // Salir del programa
+}
+
+void* countdownThread(void* arg) {
+    for (countdown = 10; countdown >= 0; --countdown) {
+        if (countdown > maxCountdown) {
+            maxCountdown = countdown; // Actualizar el valor máximo de la cuenta regresiva
+        }
+        sleep(1);
+    }
+    gameOverScreen(); // Mostrar la pantalla de "Game Over" cuando la cuenta regresiva llegue a cero
+    return NULL;
+}
+
+
 
 void printEnemies() {
     for (int i = 0; i < 5; i++) {
@@ -104,11 +131,17 @@ void checkCollisions() {
                 // El enemigo ha sido golpeado, lo hacemos reaparecer en la parte superior de la pantalla
                 enemies[i].y = 0; // Posición y en el borde superior de la pantalla
                 enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
+                // Aumentar la cuenta regresiva en 2 segundos
+                countdown += 2;
             }
+
         }
         shot = shot->next;
     }
 }
+
+
+
 
 void *refreshScreen() {
     while (isPlaying) {
@@ -116,12 +149,19 @@ void *refreshScreen() {
         clear();
         printShots();
         printShip();
+        if (countdown >= 0) {
+            attron(A_BOLD); // Hacer el texto más brillante
+            mvprintw(LINES / 2, COLS / 2, "%d", countdown);
+            attroff(A_BOLD); // Desactivar el texto brillante
+        }
         printEnemies();
         checkCollisions();
         refresh();
 
         usleep(50000); //500000 = 0.5s
     }
+
+
 }
 
 
@@ -144,7 +184,9 @@ void init() {
     firstShot->prev = NULL;
     lastShot = firstShot;
     initEnemies();
+
 }
+
 
 void *moveShip() {
     while ((ch = getch()) != 'q') {
@@ -182,6 +224,7 @@ int main() {
     //Inicializar ncurses y variables
     init();
 
+
     //refrescar
     pthread_t refreshScreen_thread_id;
     pthread_create(&refreshScreen_thread_id, NULL, refreshScreen, NULL);
@@ -193,6 +236,10 @@ int main() {
     //Dibujar nave
     pthread_t printShip_thread_id;
     pthread_create(&printShip_thread_id, NULL, moveShip, NULL);
+    // Crear el hilo de la cuenta regresiva
+    pthread_t countdown_thread_id;
+    pthread_create(&countdown_thread_id, NULL, countdownThread, NULL);
+
 
     // Finalizar ncurses
     pthread_join(printShip_thread_id, NULL);
