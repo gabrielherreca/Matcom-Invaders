@@ -10,6 +10,9 @@ struct Enemy {
     int y;
     int size;
     char *representation;
+
+    int arriveTime;
+    int life;
 };
 
 struct Enemy enemies[5]; // Array de enemigos
@@ -20,7 +23,7 @@ struct Shot {
     struct Shot *next;
     struct Shot *prev;
 };
-int ch, maxX, maxY, x, y;
+int ch, maxX, maxY, x, y; //(MaxX, MaxY) es el (ancho, alto) de la pantalla, (x,y) es la posicion actual de la nave
 int SHIP_SIZE_X = 8;
 int SHIP_SIZE_Y = 3;
 
@@ -34,27 +37,37 @@ void initEnemies() {
     for (int i = 0; i < 5; i++) {
         enemies[i].y = 0; // Posición y en el borde superior de la pantalla
         enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
+        enemies[i].life = (rand() % 3)+1;
+        enemies[i].size = 7;
     }
-    enemies[0].representation = "(*_*)";
+    /*enemies[0].representation = "(*_*)";
     enemies[1].representation = "ƪ(@)ƪ";
     enemies[2].representation = "[-_-]";
     enemies[3].representation = "[¬º-°]¬";
     enemies[4].representation = "(°+°)";
     for (int i = 0; i < 5; ++i) {
         enemies[i].size = strlen(enemies[i].representation);
-    }
+    }*/
 }
 
 void printEnemies() {
     for (int i = 0; i < 5; i++) {
         if (enemies[i].x >= 0 && enemies[i].y >= 0) { // Solo imprime los enemigos que están dentro de la pantalla
+            // Allocate memory for lifeStr
+            char lifeStr[2];
+            // Allocate memory for representation and construct it
+            enemies[i].representation = malloc(8 * sizeof(char));
+            sprintf(lifeStr, "%u", enemies[i].life);
+            strcpy(enemies[i].representation, "|-(");
+            strcat(enemies[i].representation, lifeStr);
+            strcat(enemies[i].representation, ")-|");
             mvprintw(enemies[i].y, enemies[i].x, "%s", enemies[i].representation);
         }
     }
 }
 void printShip() {
 ////////IMPORTANTE/////LEER/////COMENTARIO/////DE/////ABAJO////////////////////////
-    //Si cambias el diseño de la nave, hay que cambiar el SHIP_SIZE_X y SHIP_SIZE_Y (ancho/alto - 1)
+    //Si cambias el diseño de la nave, hay que cambiar el SHIP_SIZE_X y SHIP_SIZE_Y (ancho - 1 y alto - 1 respectivamente)
     mvprintw(y - 3, x, "    ^");
     mvprintw(y-2, x, "  *****  ");
     mvprintw(y - 1 , x, "*********");
@@ -89,7 +102,7 @@ void* moveShoot(){
 void printShots() {
     struct Shot *shot = firstShot->next;
     while (shot != NULL) {
-        if (shot->x == -1) break;
+        if (shot->x == -1) continue;
         mvprintw(shot->y, shot->x, "^");
         shot = shot->next;
     }
@@ -99,14 +112,29 @@ void printShots() {
 void checkCollisions() {
     struct Shot *shot = firstShot->next;
     while (shot != NULL) {
+        struct Shot *nextShot = shot->next; // Guardar el siguiente disparo antes de modificar la lista
         for (int i = 0; i < 5; i++) {
             if (shot->x >= enemies[i].x && abs(enemies[i].x - shot->x) <= enemies[i].size && abs(enemies[i].y - shot->y) <= 1) {
                 // El enemigo ha sido golpeado, lo hacemos reaparecer en la parte superior de la pantalla
                 enemies[i].y = 0; // Posición y en el borde superior de la pantalla
-                enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
+                enemies[i].life--;
+
+                // Eliminar el disparo de la lista
+                if (shot->prev != NULL) {
+                    shot->prev->next = shot->next;
+                } else {
+                    firstShot = shot->next;
+                }
+                if (shot->next != NULL) {
+                    shot->next->prev = shot->prev;
+                } else {
+                    lastShot = shot->prev;
+                }
+                free(shot); // Liberar la memoria del disparo
+                break; // Salir del bucle de enemigos ya que el disparo ha sido eliminado
             }
         }
-        shot = shot->next;
+        shot = nextShot; // Continuar con el siguiente disparo
     }
 }
 
