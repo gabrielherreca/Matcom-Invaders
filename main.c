@@ -23,6 +23,17 @@ struct Shot {
     struct Shot *next;
     struct Shot *prev;
 };
+
+struct Shot copyShot(struct Shot *original) {
+    struct Shot copy;
+    copy.x = original->x;
+    copy.y = original->y;
+    copy.next = original->next;
+    copy.prev = original->prev;
+    return copy;
+}
+
+
 int ch, maxX, maxY, x, y; //(MaxX, MaxY) es el (ancho, alto) de la pantalla, (x,y) es la posicion actual de la nave
 int SHIP_SIZE_X = 8;
 int SHIP_SIZE_Y = 3;
@@ -79,15 +90,19 @@ void reduceAllShot(int cant) {
     struct Shot *shot = firstShot->next;
     while (shot != NULL) {
         shot->y -= cant;
-        if (shot->y <= 0) {
-            if (shot->prev == NULL && shot->next == NULL)
+        if (shot->y <= -1) {
+            if (shot->prev == NULL && shot->next == NULL) { // Si es el único
                 shot->x = -1;
-            else if (shot->prev == NULL) //Si es el primero
+            } else if (shot->prev == NULL) { // Si es el primero
                 firstShot = shot->next;
-            else if (shot->next == NULL) //Si es el ultimo
+                firstShot->prev = NULL;
+            } else if (shot->next == NULL) { // Si es el último
                 lastShot = shot->prev;
-            else
+                lastShot->next = NULL;
+            } else { // Si está en el medio
                 shot->prev->next = shot->next;
+                shot->next->prev = shot->prev;
+            }
         }
         shot = shot->next;
     }
@@ -114,23 +129,33 @@ void checkCollisions() {
     while (shot != NULL) {
         struct Shot *nextShot = shot->next; // Guardar el siguiente disparo antes de modificar la lista
         for (int i = 0; i < 5; i++) {
-            if (shot->x >= enemies[i].x && abs(enemies[i].x - shot->x) <= enemies[i].size && abs(enemies[i].y - shot->y) <= 1) {
-                // El enemigo ha sido golpeado, lo hacemos reaparecer en la parte superior de la pantalla
-                enemies[i].y = 0; // Posición y en el borde superior de la pantalla
+            if (shot->x >= enemies[i].x && abs(enemies[i].x - shot->x) <= enemies[i].size
+                    && abs(enemies[i].y - shot->y) <= 1) {
+
                 enemies[i].life--;
 
                 // Eliminar el disparo de la lista
-                if (shot->prev != NULL) {
-                    shot->prev->next = shot->next;
-                } else {
+                if (shot->prev == NULL && shot->next == NULL) { // Si es el único
+                    shot->x = -1;
+                } else if (shot->prev == NULL) { // Si es el primero
                     firstShot = shot->next;
-                }
-                if (shot->next != NULL) {
-                    shot->next->prev = shot->prev;
-                } else {
+                    firstShot->prev = NULL;
+                } else if (shot->next == NULL) { // Si es el último
                     lastShot = shot->prev;
+                    lastShot->next = NULL;
+                } else { // Si está en el medio
+                    shot->prev->next = shot->next;
+                    shot->next->prev = shot->prev;
                 }
-                free(shot); // Liberar la memoria del disparo
+                //free(shot); // Liberar la memoria del disparo
+
+                //Eliminar la nave si la vida llega a 0
+                if (enemies[i].life == 0){
+                    enemies[i].y = 0; // Posición y en el borde superior de la pantalla
+                    enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
+                    enemies[i].life = (rand() % 3)+1;
+                    enemies[i].size = 7;
+                }
                 break; // Salir del bucle de enemigos ya que el disparo ha sido eliminado
             }
         }
