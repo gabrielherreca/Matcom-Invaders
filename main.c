@@ -31,11 +31,15 @@ int SHIP_SIZE_Y = 3;
 int gameTime = 0;
 bool isPlaying;
 bool isAutopilot = false;
+int autopilotMode = 0;
 struct Shot *firstShot;
 struct Shot *lastShot;
 
 int countdown = 10;
 int maxCountdown = 0;
+
+
+
 
 void killEnemy(struct Enemy enemy){
     x = (enemy.x + enemy.size/2) - SHIP_SIZE_X/2;
@@ -86,11 +90,20 @@ void RR(int timeSlice){
 }
 
 
-
 void* autopilot(){
     while(true){
         if (!isAutopilot) continue;
-        SJF(); //Elegir estrategia a seguir (FIFO(), SJF(), RR(sliceTime))
+        switch (autopilotMode) {
+            case 0:
+                FIFO();
+                break;
+            case 1:
+                SJF();
+                break;
+            case 2:
+                RR(2);
+                break;
+        }
     }
 }
 
@@ -124,7 +137,19 @@ void gameOverScreen() {
     endwin(); // Finalizar ncurses
     exit(0); // Salir del programa
 }
-
+void *moveEnemies(){
+    while (isPlaying){
+        for (int i = 0; i < 5; i++) {
+            if (enemies[i].y < maxY) {
+                enemies[i].y+=2 ;
+            }else{
+                gameOverScreen();
+            }
+        }
+        sleep(2);
+    }
+    return NULL;
+}
 void* countdownThread() {
     for (countdown = 10; countdown >= 0; --countdown) {
         if (countdown > maxCountdown) {
@@ -244,8 +269,20 @@ void checkCollisions() {
     }
 }
 void showHUD(){
+    char* autopilotModeStr;
+    switch (autopilotMode) {
+        case 0:
+            autopilotModeStr = "FIFO";
+            break;
+        case 1:
+            autopilotModeStr = "SJF";
+            break;
+        case 2:
+            autopilotModeStr = "RR";
+            break;
+    }
     mvprintw(maxY-5, 3, "Score: %d", maxCountdown);
-    mvprintw(maxY-4, 3, "Autopilot: %s", isAutopilot? "ON": "OFF");
+    mvprintw(maxY-4, 3, "Autopilot: %s (%s)", isAutopilot? "ON": "OFF", autopilotModeStr);
 
 }
 
@@ -318,6 +355,16 @@ void *moveShip() {
                 break;
             case 'a':
                 isAutopilot = !isAutopilot;
+                break;
+            case 'f':
+                autopilotMode = 0; //Elegir estrategia a seguir (FIFO)
+                break;
+            case 's':
+                autopilotMode = 1; //Elegir estrategia a seguir (SJF)
+                break;
+            case 'r':
+                autopilotMode = 2;//Elegir estrategia a seguir (RR)
+                break;
         }
     }
     return NULL;
@@ -348,15 +395,20 @@ int main() {
 
     //Piloto Automatico
     pthread_t autopilot_thread_id;
-    pthread_create(&autopilot_thread_id, NULL, autopilot(enemies), NULL);
+    pthread_create(&autopilot_thread_id, NULL, autopilot, NULL);
 
+    //Movimiento de las naves enemigas
+    pthread_t moveEnemies_thread_id;
+    pthread_create(&moveEnemies_thread_id, NULL, moveEnemies, NULL);
 
     // Finalizar ncurses
     pthread_join(printShip_thread_id, NULL);
     pthread_join(shoot_thread_id, NULL);
     pthread_join(refreshScreen_thread_id, NULL);
     pthread_join(autopilot_thread_id, NULL);
+    pthread_join(moveEnemies_thread_id, NULL);
     endwin();
+    free(firstShot);
     free(lastShot);
 
     return 0;
