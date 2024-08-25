@@ -28,13 +28,73 @@ int ch, maxX, maxY, x, y; //(MaxX, MaxY) es el (ancho, alto) de la pantalla, (x,
 int SHIP_SIZE_X = 8;
 int SHIP_SIZE_Y = 3;
 
-
+int gameTime = 0;
 bool isPlaying;
+bool isAutopilot = false;
 struct Shot *firstShot;
 struct Shot *lastShot;
 
 int countdown = 10;
 int maxCountdown = 0;
+
+void killEnemy(struct Enemy enemy){
+    x = (enemy.x + enemy.size/2) - SHIP_SIZE_X/2;
+    for (int j = 0; j < enemy.life; j++) {
+        struct Shot *shot = malloc(sizeof(struct Shot));
+        shot->x = x + SHIP_SIZE_X/2;
+        shot->y = y - SHIP_SIZE_Y;
+        shot->next = NULL;
+        shot->prev = lastShot;
+        lastShot->next = shot;
+        lastShot = shot;
+        usleep(300000);
+    }
+}
+
+void FIFO(){
+    struct Enemy oldest = enemies[0];
+    for (int i = 1; i < 5; i++) {
+        if (enemies[i].arriveTime < oldest.arriveTime)
+            oldest = enemies[i];
+    }
+    killEnemy(oldest);
+}
+
+void SJF(){
+    struct Enemy lifeless = enemies[0];
+    for (int i = 1; i < 5; i++) {
+        if (enemies[i].life < lifeless.life)
+            lifeless = enemies[i];
+    }
+    killEnemy(lifeless);
+}
+
+void RR(int timeSlice){
+    for (int i = 0; i < 5; i++) {
+        x = (enemies[i].x + enemies[i].size/2) - SHIP_SIZE_X/2;
+        for (int j = 0; j < timeSlice; j++) {
+            struct Shot *shot = malloc(sizeof(struct Shot));
+            shot->x = x + SHIP_SIZE_X/2;
+            shot->y = y - SHIP_SIZE_Y;
+            shot->next = NULL;
+            shot->prev = lastShot;
+            lastShot->next = shot;
+            lastShot = shot;
+            usleep(300000);
+        }
+    }
+}
+
+
+
+void* autopilot(){
+    while(true){
+        if (!isAutopilot) continue;
+        SJF(); //Elegir estrategia a seguir (FIFO(), SJF(), RR(sliceTime))
+    }
+}
+
+
 
 void initEnemies() {
     srand(time(NULL)); // Inicializar la semilla del generador de números aleatorios
@@ -65,11 +125,12 @@ void gameOverScreen() {
     exit(0); // Salir del programa
 }
 
-void* countdownThread(void* arg) {
+void* countdownThread() {
     for (countdown = 10; countdown >= 0; --countdown) {
         if (countdown > maxCountdown) {
             maxCountdown = countdown; // Actualizar el valor máximo de la cuenta regresiva
         }
+        gameTime++;
         sleep(1);
     }
     gameOverScreen(); // Mostrar la pantalla de "Game Over" cuando la cuenta regresiva llegue a cero
@@ -172,6 +233,7 @@ void checkCollisions() {
                     enemies[i].x = 4 + rand() % (maxX - 14); // Genera una posición x aleatoria dentro del rango de movimiento de la nave
                     enemies[i].life = (rand() % 3)+1;
                     enemies[i].size = 7;
+                    enemies[i].arriveTime = gameTime;
                     // Aumentar la cuenta regresiva en 2 segundos
                     countdown += 2;
                 }
@@ -181,6 +243,11 @@ void checkCollisions() {
         shot = nextShot; // Continuar con el siguiente disparo
     }
 }
+void showHUD(){
+    mvprintw(maxY-5, 3, "Score: %d", maxCountdown);
+    mvprintw(maxY-4, 3, "Autopilot: %s", isAutopilot? "ON": "OFF");
+
+}
 
 void *refreshScreen() {
     while (isPlaying) {
@@ -189,14 +256,14 @@ void *refreshScreen() {
         printShots();
         printShip();
         if (countdown >= 0) {
-            attron(A_BOLD); // Hacer el texto más brillante
+            attron(A_BOLD); // Poner texto en Negrita
             mvprintw(LINES / 2, COLS / 2, "%d", countdown);
             attroff(A_BOLD); // Desactivar el texto brillante
         }
+        showHUD();
         printEnemies();
         checkCollisions();
         refresh();
-
         usleep(50000); //500000 = 0.5s
     }
 }
@@ -248,10 +315,14 @@ void *moveShip() {
                 shot->prev = lastShot;
                 lastShot->next = shot;
                 lastShot = shot;
+                break;
+            case 'a':
+                isAutopilot = !isAutopilot;
         }
     }
     return NULL;
 }
+
 
 
 int main() {
@@ -270,15 +341,21 @@ int main() {
     //Dibujar nave
     pthread_t printShip_thread_id;
     pthread_create(&printShip_thread_id, NULL, moveShip, NULL);
+
     // Crear el hilo de la cuenta regresiva
     pthread_t countdown_thread_id;
     pthread_create(&countdown_thread_id, NULL, countdownThread, NULL);
+
+    //Piloto Automatico
+    pthread_t autopilot_thread_id;
+    pthread_create(&autopilot_thread_id, NULL, autopilot(enemies), NULL);
 
 
     // Finalizar ncurses
     pthread_join(printShip_thread_id, NULL);
     pthread_join(shoot_thread_id, NULL);
     pthread_join(refreshScreen_thread_id, NULL);
+    pthread_join(autopilot_thread_id, NULL);
     endwin();
     free(lastShot);
 
