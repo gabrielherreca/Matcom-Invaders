@@ -84,7 +84,7 @@ void RR(int timeSlice){
             shot->prev = lastShot;
             lastShot->next = shot;
             lastShot = shot;
-            usleep(300000);
+            usleep(500000);
         }
     }
 }
@@ -281,8 +281,8 @@ void showHUD(){
             autopilotModeStr = "RR";
             break;
     }
-    mvprintw(maxY-5, 3, "Score: %d", maxCountdown);
-    mvprintw(maxY-4, 3, "Autopilot: %s (%s)", isAutopilot? "ON": "OFF", autopilotModeStr);
+    mvprintw(maxY-3, 3, "Score: %d", maxCountdown);
+    mvprintw(maxY-2, 3, "Autopilot: %s (%s) (Press 'f' | 's' | 'r')", isAutopilot? "ON": "OFF", autopilotModeStr);
 
 }
 
@@ -358,12 +358,15 @@ void *moveShip() {
                 break;
             case 'f':
                 autopilotMode = 0; //Elegir estrategia a seguir (FIFO)
+                isAutopilot = true;
                 break;
             case 's':
                 autopilotMode = 1; //Elegir estrategia a seguir (SJF)
+                isAutopilot = true;
                 break;
             case 'r':
                 autopilotMode = 2;//Elegir estrategia a seguir (RR)
+                isAutopilot = true;
                 break;
         }
     }
