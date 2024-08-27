@@ -164,6 +164,35 @@ void gameOverScreen() {
     FILE *file = fopen("scores.txt", "a+");
     if (file != NULL) {
 
+        char line[256];
+
+        while (fgets(line, sizeof(line), file)) {
+            if (strncmp(line, "Player Name: ", 13) == 0) {
+                strncpy(scores[scoreCount].playerName, line + 13, sizeof(scores[scoreCount].playerName));
+            } else if (strncmp(line, "Score: ", 7) == 0) {
+                scores[scoreCount].score = atoi(line + 7);
+            } else if (strncmp(line, "Date: ", 6) == 0) {
+                strncpy(scores[scoreCount].date, line + 6, sizeof(scores[scoreCount].date));
+                scoreCount++;
+            }
+        }
+
+
+        // Ordenar las puntuaciones en orden descendente
+        for (int i = 0; i < scoreCount; i++) {
+            for (int j = i + 1; j < scoreCount; j++) {
+                if (scores[j].score > scores[i].score) {
+                    struct ScoreRecord temp = scores[i];
+                    scores[i] = scores[j];
+                    scores[j] = temp;
+                }
+            }
+        }
+
+        // Imprimir las tres mejores puntuaciones
+
+
+
 
         // Escribir el nombre del jugador en el archivo
         fprintf(file, "Player Name: %s\n", playerName);
@@ -184,50 +213,14 @@ void gameOverScreen() {
         // Agregar el separador
         fprintf(file, "---------\n");
 
-
-        char line[256];
-
-        while (fgets(line, sizeof(line), file)) {
-            if (strncmp(line, "Player Name: ", 13) == 0) {
-                strncpy(scores[scoreCount].playerName, line + 13, sizeof(scores[scoreCount].playerName));
-            } else if (strncmp(line, "Score: ", 7) == 0) {
-                scores[scoreCount].score = atoi(line + 7);
-            } else if (strncmp(line, "Date: ", 6) == 0) {
-                strncpy(scores[scoreCount].date, line + 6, sizeof(scores[scoreCount].date));
-                scoreCount++;
-            }
-        }
-
-
         fclose(file);
     }
-
-    // Ordenar las puntuaciones en orden descendente
-    for (int i = 0; i < scoreCount; i++) {
-        for (int j = i + 1; j < scoreCount; j++) {
-            if (scores[j].score > scores[i].score) {
-                struct ScoreRecord temp = scores[i];
-                scores[i] = scores[j];
-                scores[j] = temp;
-            }
-        }
-    }
-
 
 
 
 
     mvprintw(LINES / 2, COLS / 2 - 4, "GAME OVER"); // Imprimir "GAME OVER" en el centro de la pantalla
     mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Your score: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
-
-
-    // Imprimir las tres mejores puntuaciones
-    for (int i = 0; i < 3 && i < scoreCount; i++) {
-        mvprintw(LINES / 2 + 3 + i, COLS / 2 - 10, "%d. %s - %d - %s", i + 1, scores[i].playerName, scores[i].score, scores[i].date);
-    }
-
-
-
     mvprintw(LINES / 2 + 6, COLS / 2 - 10, "Pulsa 'r' para jugar de nuevo o 'q' para salir"); // Imprimir las instrucciones para reiniciar el juego
     refresh(); // Actualizar la pantalla
 
