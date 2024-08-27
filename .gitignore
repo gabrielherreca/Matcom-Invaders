@@ -3,3 +3,4 @@ proyecto
 cmake-build-debug
 .vscode
 .idea
+/run.cmd
