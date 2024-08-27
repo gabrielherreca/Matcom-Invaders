@@ -5,6 +5,22 @@
 #include <time.h>
 #include <string.h>
 
+char playerName[50]; // Variable global para almacenar el nombre del jugador
+// Variables globales para almacenar los argumentos de la línea de comandos
+char *global_argv[2];
+int global_argc;
+
+
+struct ScoreRecord {
+    char playerName[50];
+    int score;
+    char date[20];
+};
+
+
+
+
+
 struct Enemy {
     int x;
     int y;
@@ -54,6 +70,19 @@ void killEnemy(struct Enemy enemy){
         usleep(300000);
     }
 }
+
+void welcomeScreen() {
+    clear(); // Limpiar la pantalla
+    mvprintw(LINES / 2, COLS / 2 - 15, "Bienvenido a Matcom Invaders"); // Imprimir el mensaje de bienvenida en el centro de la pantalla
+    mvprintw(LINES / 2 + 1, COLS / 2 - 28, "Ingresa tu nombre por favor y presiona 'enter' para continuar"); // Imprimir las instrucciones debajo del mensaje de bienvenida
+    refresh(); // Actualizar la pantalla
+    echo(); // Habilitar el eco de los caracteres ingresados
+    mvgetstr(LINES / 2 + 2, COLS / 2 - 10, playerName); // Solicitar el nombre del jugador
+    noecho(); // Deshabilitar el eco de los caracteres ingresados
+
+
+}
+
 
 void FIFO(){
     struct Enemy oldest = enemies[0];
@@ -129,14 +158,97 @@ void initEnemies() {
 
 void gameOverScreen() {
     clear(); // Limpiar la pantalla
+    struct ScoreRecord scores[1000];
+    int scoreCount = 0;
+
+    FILE *file = fopen("scores.txt", "a+");
+    if (file != NULL) {
+
+
+        // Escribir el nombre del jugador en el archivo
+        fprintf(file, "Player Name: %s\n", playerName);
+        // Agregar la puntuación del jugador al final del archivo
+        fprintf(file, "Score: %d\n", maxCountdown);
+
+        // Obtener la fecha y hora actual
+        time_t now = time(NULL);
+        struct tm *t = localtime(&now);
+
+        // Formatear la fecha y hora en una cadena
+        char date[20];
+        strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", t);
+
+        // Escribir la fecha y hora en el archivo
+        fprintf(file, "Date: %s\n", date);
+
+        // Agregar el separador
+        fprintf(file, "---------\n");
+
+
+        char line[256];
+
+        while (fgets(line, sizeof(line), file)) {
+            if (strncmp(line, "Player Name: ", 13) == 0) {
+                strncpy(scores[scoreCount].playerName, line + 13, sizeof(scores[scoreCount].playerName));
+            } else if (strncmp(line, "Score: ", 7) == 0) {
+                scores[scoreCount].score = atoi(line + 7);
+            } else if (strncmp(line, "Date: ", 6) == 0) {
+                strncpy(scores[scoreCount].date, line + 6, sizeof(scores[scoreCount].date));
+                scoreCount++;
+            }
+        }
+
+
+        fclose(file);
+    }
+
+    // Ordenar las puntuaciones en orden descendente
+    for (int i = 0; i < scoreCount; i++) {
+        for (int j = i + 1; j < scoreCount; j++) {
+            if (scores[j].score > scores[i].score) {
+                struct ScoreRecord temp = scores[i];
+                scores[i] = scores[j];
+                scores[j] = temp;
+            }
+        }
+    }
+
+
+
+
+
     mvprintw(LINES / 2, COLS / 2 - 4, "GAME OVER"); // Imprimir "GAME OVER" en el centro de la pantalla
-    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Max Points: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Your score: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+
+
+    // Imprimir las tres mejores puntuaciones
+    for (int i = 0; i < 3 && i < scoreCount; i++) {
+        mvprintw(LINES / 2 + 3 + i, COLS / 2 - 10, "%d. %s - %d - %s", i + 1, scores[i].playerName, scores[i].score, scores[i].date);
+    }
+
+
+
+    mvprintw(LINES / 2 + 6, COLS / 2 - 10, "Pulsa 'r' para jugar de nuevo o 'q' para salir"); // Imprimir las instrucciones para reiniciar el juego
     refresh(); // Actualizar la pantalla
+
     isPlaying = false; // Cambiar el estado del juego a falso
-    getch(); // Esperar a que se presione una tecla
+
+    // Esperar a que se presione una tecla
+    char ch;
+    do {
+        ch = getch();
+        if (ch == 'r') {
+            // Reiniciar el programa
+            execv(global_argv[0], global_argv);
+        }
+    } while (ch != 'q');
+
     endwin(); // Finalizar ncurses
     exit(0); // Salir del programa
 }
+
+
+
 void *moveEnemies(){
     while (isPlaying){
         for (int i = 0; i < 5; i++) {
@@ -375,8 +487,19 @@ void *moveShip() {
 
 
 
-int main() {
+int main(int argc, char *argv[]) {
 
+    // Almacenar los argumentos de la línea de comandos
+    global_argc = argc;
+    global_argv[0] = argv[0];
+    global_argv[1] = NULL;
+
+    // Inicializar ncurses
+    initscr();
+    cbreak(); // Habilitar el modo cbreak para que getch() no espere el ingreso de una nueva línea
+
+    // Mostrar la pantalla de bienvenida
+    welcomeScreen();
     //Inicializar ncurses y variables
     init();
 
