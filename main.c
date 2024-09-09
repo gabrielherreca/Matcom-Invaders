@@ -5,6 +5,9 @@
 #include <time.h>
 #include <string.h>
 
+char playerName[50];
+char *global_argv[2];
+
 struct Enemy {
     int x;
     int y;
@@ -35,8 +38,7 @@ int autopilotMode = 0;
 struct Shot *firstShot;
 struct Shot *lastShot;
 
-int countdown = 10;
-int maxCountdown = 0;
+int score = 0;
 
 
 
@@ -54,6 +56,19 @@ void killEnemy(struct Enemy enemy){
         usleep(300000);
     }
 }
+
+void welcomeScreen() {
+    clear(); // Limpiar la pantalla
+    mvprintw(LINES / 2, COLS / 2 - 15, "Bienvenido a Matcom Invaders"); // Imprimir el mensaje de bienvenida en el centro de la pantalla
+    mvprintw(LINES / 2 + 1, COLS / 2 - 28, "Ingresa tu nombre por favor y presiona 'enter' para continuar"); // Imprimir las instrucciones debajo del mensaje de bienvenida
+    refresh(); // Actualizar la pantalla
+    echo(); // Habilitar el eco de los caracteres ingresados
+    mvgetstr(LINES / 2 + 2, COLS / 2 - 10, playerName); // Solicitar el nombre del jugador
+    noecho(); // Deshabilitar el eco de los caracteres ingresados
+
+
+}
+
 
 void FIFO(){
     struct Enemy oldest = enemies[0];
@@ -117,28 +132,71 @@ void initEnemies() {
         enemies[i].life = (rand() % 3)+1;
         enemies[i].size = 7;
     }
-    /*enemies[0].representation = "(*_*)";
-    enemies[1].representation = "ƪ(@)ƪ";
-    enemies[2].representation = "[-_-]";
-    enemies[3].representation = "[¬º-°]¬";
-    enemies[4].representation = "(°+°)";
-    for (int i = 0; i < 5; ++i) {
-        enemies[i].size = strlen(enemies[i].representation);
-    }*/
+
 }
 
 void gameOverScreen() {
     clear(); // Limpiar la pantalla
+
+    int scoreCount = 0;
+
+    FILE *file = fopen("scores.txt", "a+");
+    if (file != NULL) {
+
+
+
+
+        // Escribir el nombre del jugador en el archivo
+        fprintf(file, "Player Name: %s\n", playerName);
+        // Agregar la puntuación del jugador al final del archivo
+        fprintf(file, "Score: %d\n", score);
+
+        // Obtener la fecha y hora actual
+        time_t now = time(NULL);
+        struct tm *t = localtime(&now);
+
+        // Formatear la fecha y hora en una cadena
+        char date[20];
+        strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", t);
+
+        // Escribir la fecha y hora en el archivo
+        fprintf(file, "Date: %s\n", date);
+
+        // Agregar el separador
+        fprintf(file, "---------\n");
+
+        fclose(file);
+    }
+
+
+
+
     mvprintw(LINES / 2, COLS / 2 - 4, "GAME OVER"); // Imprimir "GAME OVER" en el centro de la pantalla
-    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Max Points: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Your score: %d", score); // Imprimir los puntos máximos debajo de "GAME OVER"
+    mvprintw(LINES / 2 + 6, COLS / 2 - 10, "Pulsa 'r' para jugar de nuevo o 'q' para salir"); // Imprimir las instrucciones para reiniciar el juego
     refresh(); // Actualizar la pantalla
+
     isPlaying = false; // Cambiar el estado del juego a falso
-    getch(); // Esperar a que se presione una tecla
+
+    // Esperar a que se presione una tecla
+    char ch;
+    do {
+        ch = getch();
+        if (ch == 'r') {
+            // Reiniciar el programa
+            execv(global_argv[0], global_argv);
+        }
+    } while (ch != 'q');
+
     endwin(); // Finalizar ncurses
     exit(0); // Salir del programa
 }
+
+
+
 void *moveEnemies(){
     while (isPlaying){
+        sleep(2);
         for (int i = 0; i < 5; i++) {
             if (enemies[i].y < maxY) {
                 enemies[i].y+=2 ;
@@ -146,23 +204,10 @@ void *moveEnemies(){
                 gameOverScreen();
             }
         }
-        sleep(2);
     }
     return NULL;
-}
-void* countdownThread() {
-    for (countdown = 10; countdown >= 0; --countdown) {
-        if (countdown > maxCountdown) {
-            maxCountdown = countdown; // Actualizar el valor máximo de la cuenta regresiva
-        }
-        gameTime++;
-        sleep(1);
-    }
-    gameOverScreen(); // Mostrar la pantalla de "Game Over" cuando la cuenta regresiva llegue a cero
-    return NULL;
-}
 
-
+}
 
 void printEnemies() {
     for (int i = 0; i < 5; i++) {
@@ -189,7 +234,7 @@ void printShip() {
 }
 
 
-void reduceAllShot(int cant) {
+void moveAllShots(int cant) {
     struct Shot *shot = firstShot->next;
     while (shot != NULL) {
         shot->y -= cant;
@@ -213,7 +258,7 @@ void reduceAllShot(int cant) {
 void* moveShoot(){
     while (true){
         usleep(300000); // 0.8 seconds
-        reduceAllShot(2);
+        moveAllShots(2);
     }
 }
 
@@ -233,7 +278,7 @@ void checkCollisions() {
         struct Shot *nextShot = shot->next; // Guardar el siguiente disparo antes de modificar la lista
         for (int i = 0; i < 5; i++) {
             if (shot->x >= enemies[i].x && abs(enemies[i].x - shot->x) <= enemies[i].size
-                    && abs(enemies[i].y - shot->y) <= 1) {
+                && abs(enemies[i].y - shot->y) <= 1) {
 
                 enemies[i].life--;
 
@@ -260,7 +305,7 @@ void checkCollisions() {
                     enemies[i].size = 7;
                     enemies[i].arriveTime = gameTime;
                     // Aumentar la cuenta regresiva en 2 segundos
-                    countdown += 2;
+                    score += 1;
                 }
                 break; // Salir del bucle de enemigos ya que el disparo ha sido eliminado
             }
@@ -281,7 +326,7 @@ void showHUD(){
             autopilotModeStr = "RR";
             break;
     }
-    mvprintw(maxY-3, 3, "Score: %d", maxCountdown);
+    mvprintw(maxY-3, 3, "Score: %d", score);
     mvprintw(maxY-2, 3, "Autopilot: %s (%s) (Press 'f' | 's' | 'r')", isAutopilot? "ON": "OFF", autopilotModeStr);
 
 }
@@ -292,11 +337,11 @@ void *refreshScreen() {
         clear();
         printShots();
         printShip();
-        if (countdown >= 0) {
+        /*if (countdown >= 0) {
             attron(A_BOLD); // Poner texto en Negrita
             mvprintw(LINES / 2, COLS / 2, "%d", countdown);
-            attroff(A_BOLD); // Desactivar el texto brillante
-        }
+
+        }*/
         showHUD();
         printEnemies();
         checkCollisions();
@@ -375,8 +420,18 @@ void *moveShip() {
 
 
 
-int main() {
+int main(int argc, char *argv[]) {
 
+    // Almacenar los argumentos de la línea de comandos
+    global_argv[0] = argv[0];
+    global_argv[1] = NULL;
+
+    // Inicializar ncurses
+    initscr();
+    cbreak(); // Habilitar el modo cbreak para que getch() no espere el ingreso de una nueva línea
+
+    // Mostrar la pantalla de bienvenida
+    welcomeScreen();
     //Inicializar ncurses y variables
     init();
 
@@ -391,10 +446,6 @@ int main() {
     //Dibujar nave
     pthread_t printShip_thread_id;
     pthread_create(&printShip_thread_id, NULL, moveShip, NULL);
-
-    // Crear el hilo de la cuenta regresiva
-    pthread_t countdown_thread_id;
-    pthread_create(&countdown_thread_id, NULL, countdownThread, NULL);
 
     //Piloto Automatico
     pthread_t autopilot_thread_id;
