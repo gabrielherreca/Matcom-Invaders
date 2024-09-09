@@ -8,17 +8,6 @@
 char playerName[50];
 char *global_argv[2];
 
-
-struct ScoreRecord {
-    char playerName[50];
-    int score;
-    char date[20];
-};
-
-
-
-
-
 struct Enemy {
     int x;
     int y;
@@ -49,8 +38,7 @@ int autopilotMode = 0;
 struct Shot *firstShot;
 struct Shot *lastShot;
 
-int countdown = 10;
-int maxCountdown = 0;
+int score = 0;
 
 
 
@@ -161,7 +149,7 @@ void gameOverScreen() {
         // Escribir el nombre del jugador en el archivo
         fprintf(file, "Player Name: %s\n", playerName);
         // Agregar la puntuación del jugador al final del archivo
-        fprintf(file, "Score: %d\n", maxCountdown);
+        fprintf(file, "Score: %d\n", score);
 
         // Obtener la fecha y hora actual
         time_t now = time(NULL);
@@ -184,7 +172,7 @@ void gameOverScreen() {
 
 
     mvprintw(LINES / 2, COLS / 2 - 4, "GAME OVER"); // Imprimir "GAME OVER" en el centro de la pantalla
-    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Your score: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Your score: %d", score); // Imprimir los puntos máximos debajo de "GAME OVER"
     mvprintw(LINES / 2 + 6, COLS / 2 - 10, "Pulsa 'r' para jugar de nuevo o 'q' para salir"); // Imprimir las instrucciones para reiniciar el juego
     refresh(); // Actualizar la pantalla
 
@@ -218,20 +206,8 @@ void *moveEnemies(){
         }
     }
     return NULL;
-}
-void* countdownThread() {
-    for (countdown = 10; countdown >= 0; --countdown) {
-        if (countdown > maxCountdown) {
-            maxCountdown = countdown; // Actualizar el valor máximo de la cuenta regresiva
-        }
-        gameTime++;
-        sleep(1);
-    }
-    gameOverScreen(); // Mostrar la pantalla de "Game Over" cuando la cuenta regresiva llegue a cero
-    return NULL;
-}
 
-
+}
 
 void printEnemies() {
     for (int i = 0; i < 5; i++) {
@@ -258,7 +234,7 @@ void printShip() {
 }
 
 
-void reduceAllShot(int cant) {
+void moveAllShots(int cant) {
     struct Shot *shot = firstShot->next;
     while (shot != NULL) {
         shot->y -= cant;
@@ -282,7 +258,7 @@ void reduceAllShot(int cant) {
 void* moveShoot(){
     while (true){
         usleep(300000); // 0.8 seconds
-        reduceAllShot(2);
+        moveAllShots(2);
     }
 }
 
@@ -329,7 +305,7 @@ void checkCollisions() {
                     enemies[i].size = 7;
                     enemies[i].arriveTime = gameTime;
                     // Aumentar la cuenta regresiva en 2 segundos
-                    countdown += 2;
+                    score += 1;
                 }
                 break; // Salir del bucle de enemigos ya que el disparo ha sido eliminado
             }
@@ -350,7 +326,7 @@ void showHUD(){
             autopilotModeStr = "RR";
             break;
     }
-    mvprintw(maxY-3, 3, "Score: %d", maxCountdown);
+    mvprintw(maxY-3, 3, "Score: %d", score);
     mvprintw(maxY-2, 3, "Autopilot: %s (%s) (Press 'f' | 's' | 'r')", isAutopilot? "ON": "OFF", autopilotModeStr);
 
 }
@@ -361,11 +337,11 @@ void *refreshScreen() {
         clear();
         printShots();
         printShip();
-        if (countdown >= 0) {
+        /*if (countdown >= 0) {
             attron(A_BOLD); // Poner texto en Negrita
             mvprintw(LINES / 2, COLS / 2, "%d", countdown);
 
-        }
+        }*/
         showHUD();
         printEnemies();
         checkCollisions();
@@ -470,10 +446,6 @@ int main(int argc, char *argv[]) {
     //Dibujar nave
     pthread_t printShip_thread_id;
     pthread_create(&printShip_thread_id, NULL, moveShip, NULL);
-
-    // Crear el hilo de la cuenta regresiva
-    pthread_t countdown_thread_id;
-    pthread_create(&countdown_thread_id, NULL, countdownThread, NULL);
 
     //Piloto Automatico
     pthread_t autopilot_thread_id;
