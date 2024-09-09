@@ -7,7 +7,6 @@
 
 char playerName[50];
 char *global_argv[2];
-int global_argc;
 
 
 struct ScoreRecord {
@@ -365,7 +364,7 @@ void *refreshScreen() {
         if (countdown >= 0) {
             attron(A_BOLD); // Poner texto en Negrita
             mvprintw(LINES / 2, COLS / 2, "%d", countdown);
-            attroff(A_BOLD); // Desactivar el texto brillante
+
         }
         showHUD();
         printEnemies();
@@ -448,7 +447,6 @@ void *moveShip() {
 int main(int argc, char *argv[]) {
 
     // Almacenar los argumentos de la línea de comandos
-    global_argc = argc;
     global_argv[0] = argv[0];
     global_argv[1] = NULL;
 
