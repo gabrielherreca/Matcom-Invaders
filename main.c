@@ -5,8 +5,7 @@
 #include <time.h>
 #include <string.h>
 
-char playerName[50]; // Variable global para almacenar el nombre del jugador
-// Variables globales para almacenar los argumentos de la línea de comandos
+char playerName[50];
 char *global_argv[2];
 int global_argc;
 
@@ -146,50 +145,16 @@ void initEnemies() {
         enemies[i].life = (rand() % 3)+1;
         enemies[i].size = 7;
     }
-    /*enemies[0].representation = "(*_*)";
-    enemies[1].representation = "ƪ(@)ƪ";
-    enemies[2].representation = "[-_-]";
-    enemies[3].representation = "[¬º-°]¬";
-    enemies[4].representation = "(°+°)";
-    for (int i = 0; i < 5; ++i) {
-        enemies[i].size = strlen(enemies[i].representation);
-    }*/
+
 }
 
 void gameOverScreen() {
     clear(); // Limpiar la pantalla
-    struct ScoreRecord scores[1000];
+
     int scoreCount = 0;
 
     FILE *file = fopen("scores.txt", "a+");
     if (file != NULL) {
-
-        char line[256];
-
-        while (fgets(line, sizeof(line), file)) {
-            if (strncmp(line, "Player Name: ", 13) == 0) {
-                strncpy(scores[scoreCount].playerName, line + 13, sizeof(scores[scoreCount].playerName));
-            } else if (strncmp(line, "Score: ", 7) == 0) {
-                scores[scoreCount].score = atoi(line + 7);
-            } else if (strncmp(line, "Date: ", 6) == 0) {
-                strncpy(scores[scoreCount].date, line + 6, sizeof(scores[scoreCount].date));
-                scoreCount++;
-            }
-        }
-
-
-        // Ordenar las puntuaciones en orden descendente
-        for (int i = 0; i < scoreCount; i++) {
-            for (int j = i + 1; j < scoreCount; j++) {
-                if (scores[j].score > scores[i].score) {
-                    struct ScoreRecord temp = scores[i];
-                    scores[i] = scores[j];
-                    scores[j] = temp;
-                }
-            }
-        }
-
-        // Imprimir las tres mejores puntuaciones
 
 
 
