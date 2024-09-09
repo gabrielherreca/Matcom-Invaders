@@ -139,6 +139,7 @@ void gameOverScreen() {
 }
 void *moveEnemies(){
     while (isPlaying){
+        sleep(2);
         for (int i = 0; i < 5; i++) {
             if (enemies[i].y < maxY) {
                 enemies[i].y+=2 ;
@@ -146,7 +147,6 @@ void *moveEnemies(){
                 gameOverScreen();
             }
         }
-        sleep(2);
     }
     return NULL;
 }
