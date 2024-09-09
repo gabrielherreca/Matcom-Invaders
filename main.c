@@ -5,6 +5,20 @@
 #include <time.h>
 #include <string.h>
 
+char playerName[50];
+char *global_argv[2];
+
+
+struct ScoreRecord {
+    char playerName[50];
+    int score;
+    char date[20];
+};
+
+
+
+
+
 struct Enemy {
     int x;
     int y;
@@ -54,6 +68,19 @@ void killEnemy(struct Enemy enemy){
         usleep(300000);
     }
 }
+
+void welcomeScreen() {
+    clear(); // Limpiar la pantalla
+    mvprintw(LINES / 2, COLS / 2 - 15, "Bienvenido a Matcom Invaders"); // Imprimir el mensaje de bienvenida en el centro de la pantalla
+    mvprintw(LINES / 2 + 1, COLS / 2 - 28, "Ingresa tu nombre por favor y presiona 'enter' para continuar"); // Imprimir las instrucciones debajo del mensaje de bienvenida
+    refresh(); // Actualizar la pantalla
+    echo(); // Habilitar el eco de los caracteres ingresados
+    mvgetstr(LINES / 2 + 2, COLS / 2 - 10, playerName); // Solicitar el nombre del jugador
+    noecho(); // Deshabilitar el eco de los caracteres ingresados
+
+
+}
+
 
 void FIFO(){
     struct Enemy oldest = enemies[0];
@@ -117,26 +144,68 @@ void initEnemies() {
         enemies[i].life = (rand() % 3)+1;
         enemies[i].size = 7;
     }
-    /*enemies[0].representation = "(*_*)";
-    enemies[1].representation = "ƪ(@)ƪ";
-    enemies[2].representation = "[-_-]";
-    enemies[3].representation = "[¬º-°]¬";
-    enemies[4].representation = "(°+°)";
-    for (int i = 0; i < 5; ++i) {
-        enemies[i].size = strlen(enemies[i].representation);
-    }*/
+
 }
 
 void gameOverScreen() {
     clear(); // Limpiar la pantalla
+
+    int scoreCount = 0;
+
+    FILE *file = fopen("scores.txt", "a+");
+    if (file != NULL) {
+
+
+
+
+        // Escribir el nombre del jugador en el archivo
+        fprintf(file, "Player Name: %s\n", playerName);
+        // Agregar la puntuación del jugador al final del archivo
+        fprintf(file, "Score: %d\n", maxCountdown);
+
+        // Obtener la fecha y hora actual
+        time_t now = time(NULL);
+        struct tm *t = localtime(&now);
+
+        // Formatear la fecha y hora en una cadena
+        char date[20];
+        strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", t);
+
+        // Escribir la fecha y hora en el archivo
+        fprintf(file, "Date: %s\n", date);
+
+        // Agregar el separador
+        fprintf(file, "---------\n");
+
+        fclose(file);
+    }
+
+
+
+
     mvprintw(LINES / 2, COLS / 2 - 4, "GAME OVER"); // Imprimir "GAME OVER" en el centro de la pantalla
-    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Max Points: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+    mvprintw(LINES / 2 + 1, COLS / 2 - 6, "Your score: %d", maxCountdown); // Imprimir los puntos máximos debajo de "GAME OVER"
+    mvprintw(LINES / 2 + 6, COLS / 2 - 10, "Pulsa 'r' para jugar de nuevo o 'q' para salir"); // Imprimir las instrucciones para reiniciar el juego
     refresh(); // Actualizar la pantalla
+
     isPlaying = false; // Cambiar el estado del juego a falso
-    getch(); // Esperar a que se presione una tecla
+
+    // Esperar a que se presione una tecla
+    char ch;
+    do {
+        ch = getch();
+        if (ch == 'r') {
+            // Reiniciar el programa
+            execv(global_argv[0], global_argv);
+        }
+    } while (ch != 'q');
+
     endwin(); // Finalizar ncurses
     exit(0); // Salir del programa
 }
+
+
+
 void *moveEnemies(){
     while (isPlaying){
         sleep(2);
@@ -295,7 +364,7 @@ void *refreshScreen() {
         if (countdown >= 0) {
             attron(A_BOLD); // Poner texto en Negrita
             mvprintw(LINES / 2, COLS / 2, "%d", countdown);
-            attroff(A_BOLD); // Desactivar el texto brillante
+
         }
         showHUD();
         printEnemies();
@@ -375,8 +444,18 @@ void *moveShip() {
 
 
 
-int main() {
+int main(int argc, char *argv[]) {
 
+    // Almacenar los argumentos de la línea de comandos
+    global_argv[0] = argv[0];
+    global_argv[1] = NULL;
+
+    // Inicializar ncurses
+    initscr();
+    cbreak(); // Habilitar el modo cbreak para que getch() no espere el ingreso de una nueva línea
+
+    // Mostrar la pantalla de bienvenida
+    welcomeScreen();
     //Inicializar ncurses y variables
     init();
 

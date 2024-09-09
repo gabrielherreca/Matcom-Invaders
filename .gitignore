@@ -1,6 +1,9 @@
 CMakeLists.txt
+main
+run.txt
+compile_and_run.bat
 proyecto
 cmake-build-debug
 .vscode
 .idea
-/run.cmd
+
